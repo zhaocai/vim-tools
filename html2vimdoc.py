@@ -329,9 +329,12 @@ def print_heading(text, output, tags, marker, filename):
   if anchor and anchor in heading:
     lines.append(replace_quoted(heading, anchor, '*%s*' % anchor))
   else:
+    heading = heading.upper()
     if anchor:
-      lines.append('%080s' % ('*' + anchor + '*'))
-    lines.append(heading + ' ~')
+      width = 80 - len(heading)
+      lines.append(('%s%' + str(width) + 's') % (heading, ('*' + anchor + '*')))
+    else:
+      lines.append(heading)
   output.append('\n'.join(lines))
 
 def replace_quoted(text, find, replace):
