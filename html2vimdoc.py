@@ -94,7 +94,7 @@ def html2vimdoc(html, filename='', title='', url=''):
       elif level < lastlevel:
         counters.pop()
       counters[-1] += 1
-      entry = ' ' * (level - 1) + str(counters[-1]) + '. ' + text
+      entry = '  ' * (level - 1) + str(counters[-1]) + '. ' + text
       if anchor and anchor in entry:
         entry = replace_quoted(entry, anchor, '|%s|' % anchor)
       elif anchor:
