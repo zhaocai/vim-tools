@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
+# TODO Don't add link targets inside code blocks!
+
 """
 Convert HTML documents to Vim help files.
 
 Author: Peter Odding <peter@peterodding.com>
-Last Change: January 15, 2012
+Last Change: November 12, 2012
 Homepage: http://github.com/xolox/vim-tools
 License: MIT
 
@@ -53,13 +55,12 @@ from textwrap import dedent
 import urllib
 
 # Extra dependencies.
-from BeautifulSoup import BeautifulSoup, Comment
+from BeautifulSoup import BeautifulSoup, Comment, UnicodeDammit
 
 def main():
   filename, title, url, arguments = parse_args(sys.argv[1:])
   filename, url, text = get_input(filename, url, arguments)
-  html = markdown_to_html(text)
-  print html2vimdoc(html, filename=filename, title=title, url=url)
+  print html2vimdoc(text, filename=filename, title=title, url=url)
 
 def html2vimdoc(html, filename='', title='', url=''):
   """ This function performs the conversion from HTML to Vim help file. """
@@ -82,9 +83,9 @@ def html2vimdoc(html, filename='', title='', url=''):
   # Write a table of contents.
   print_heading('Contents', output, tags, '=', basename)
   lastlevel = 0
-  counters = []
+  counters = [0]
   toc = []
-  for item in [('h2', 'Introduction')] + blocks:
+  for item in [('h%i' % firstlevel, 'Introduction')] + blocks:
     if item[0] in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6'):
       level = int(item[0][1])
       text = compact(item[1])
@@ -160,26 +161,22 @@ def get_input(filename, url, args):
     handle = urllib.urlopen(location)
     text = handle.read()
     handle.close()
+    if location.lower().endswith(('.md', '.mkd', '.mkdn', '.mdown', '.markdown')):
+      text = markdown_to_html(text)
   return filename, url, text
 
 def markdown_to_html(text):
-  """ When input looks like Markdown, convert to HTML so we can parse that. """
-  if text.startswith('#'):
-    try:
-      # Workaround for "UnicodeDecodeError: Markdown only accepts Unicode or ASCII input".
-      text = text.decode('utf-8')
-    except:
-      pass
-    from markdown import markdown
-    text = markdown(text)
-  return text
+  """ When the input is Markdown, convert it to HTML so we can parse that. """
+  # The Python Markdown module only accepts Unicode and ASCII strings but I
+  # save my Markdown documents in the UTF-8 encoding. That's why I use
+  # UnicodeDammit to give me Unicode when possible.
+  from markdown import markdown
+  return markdown(UnicodeDammit(text).unicode)
 
 def parse_html(contents, title, url):
   """ Parse HTML input using Beautiful Soup parser. """
-  # Decode hexadecimal entities because Beautiful Soup doesn't support them :-\
+  # Decode hexadecimal entities because Beautiful Soup doesn't support them :-|
   contents = re.sub(r'&#x([0-9A-Fa-f]+);', lambda n: chr(int(n.group(1), 16)), contents)
-  # Remove copyright signs.
-  contents = contents.replace(u'\xa9', 'Copyright')
   tree = BeautifulSoup(contents, convertEntities = BeautifulSoup.ALL_ENTITIES)
   # Restrict conversion to content text.
   root = tree.find(id = 'content')
@@ -194,8 +191,8 @@ def parse_html(contents, title, url):
   if headings:
     if not title:
       title = compact(node_text(headings[0]))
-      # Remove heading from parse tree.
-      headings[0].extract()
+    # Remove the first top-level heading from the parse tree.
+    headings[0].extract()
   # Remove HTML comments from parse tree.
   [c.extract() for c in root.findAll(text = lambda n: isinstance(n, Comment))]
   # XXX Hacks for the Lua/APR binding documentation: Remove <a href=..>#</a>
@@ -311,7 +308,10 @@ def print_block(item, output, tags, level, filename):
     text = trim_lines(text)
     if item[0] in ('li', 'dt', 'dd'):
       text = ' - ' + text
-    # Make Lua manual more useful by making paragraph numbers help tags.
+    # Replace copyright signs with the text `copyright' (this is very specific
+    # to the README.md files I write for my own Vim plug-ins).
+    text = text.replace(u'\xa9', 'Copyright')
+    # Make the Lua manual more useful by rewriting paragraph numbers into help tags.
     text = re.sub(u'\xa7(\\d+(\\.\\d+)*)', '|lua-\\1|', text)
     text = wrap_text(text)
     output.append(text)
