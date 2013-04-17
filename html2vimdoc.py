@@ -307,7 +307,7 @@ def print_block(item, output, tags, level, filename):
     text = item[item[0] == 'text' and 2 or 1]
     text = trim_lines(text)
     if item[0] in ('li', 'dt', 'dd'):
-      text = ' - ' + text
+      text = '- ' + text
     # Replace copyright signs with the text `copyright' (this is very specific
     # to the README.md files I write for my own Vim plug-ins).
     text = text.replace(u'\xa9', 'Copyright')
